@@ -38,6 +38,10 @@ const backendOptions = [
         text: $gettext("Interrupt other songs to play at scheduled time."),
     },
     {
+        value: "exact_start",
+        text: $gettext("Force exact start at scheduled time (interrupt AutoDJ, but not live DJs)."),
+    },
+    {
         value: "single_track",
         text: $gettext("Only play one track at scheduled time."),
     },
