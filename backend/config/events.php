@@ -52,7 +52,7 @@ return static function (CallableEventDispatcherInterface $dispatcher) {
 
             // Add an error handler for most in-controller/task situations.
             $errorMiddleware = $app->addErrorMiddleware(
-                $environment->showDetailedErrors(),
+                $environment->showDetailedErrors,
                 true,
                 true,
                 $container->get(Psr\Log\LoggerInterface::class)
@@ -108,10 +108,6 @@ return static function (CallableEventDispatcherInterface $dispatcher) {
     );
     $dispatcher->addCallableListener(
         Event\GetNotifications::class,
-        App\Notification\Check\ProfilerAdvisorCheck::class
-    );
-    $dispatcher->addCallableListener(
-        Event\GetNotifications::class,
         App\Notification\Check\DonateAdvisorCheck::class
     );
     $dispatcher->addCallableListener(
@@ -151,6 +147,7 @@ return static function (CallableEventDispatcherInterface $dispatcher) {
             App\Radio\AutoDJ\QueueBuilder::class,
             App\Radio\AutoDJ\Annotations::class,
             App\Radio\Backend\Liquidsoap\ConfigWriter::class,
+            App\Radio\Backend\Liquidsoap\ExactScheduleConfigWriter::class,
             App\Radio\Backend\Liquidsoap\PlaylistFileWriter::class,
             App\Sync\NowPlaying\Task\NowPlayingTask::class,
         ]
