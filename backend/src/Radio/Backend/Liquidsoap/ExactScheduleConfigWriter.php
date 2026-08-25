@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Radio\Backend\Liquidsoap;
 
 use App\Entity\Enums\PlaylistSources;
-use App\Entity\StationPlaylist;
 use App\Entity\StationSchedule;
 use App\Event\Radio\WriteLiquidsoapConfiguration;
 use Carbon\CarbonImmutable;
@@ -47,7 +46,7 @@ final class ExactScheduleConfigWriter implements EventSubscriberInterface
             }
             $playlistVarNames[] = $playlistVarName;
 
-            if (!$playlist->backendExactStart()) {
+            if (!$playlist->backendExactStartUsesLiquidsoap()) {
                 continue;
             }
 
@@ -57,11 +56,6 @@ final class ExactScheduleConfigWriter implements EventSubscriberInterface
                 PlaylistSources::Playlists === $playlist->source
                 || PlaylistSources::Requests === $playlist->source
             ) {
-                continue;
-            }
-
-            // Exact start only has meaning when a wall-clock schedule exists.
-            if (0 === $playlist->schedule_items->count()) {
                 continue;
             }
 
@@ -132,9 +126,9 @@ final class ExactScheduleConfigWriter implements EventSubscriberInterface
             return '(' . implode(') or (', $playTimes) . ')';
         }
 
-        $playTime = ($startTime === $endTime)
-            ? ConfigWriter::formatTimeCode($startTime)
-            : ConfigWriter::formatTimeCode($startTime) . '-' . ConfigWriter::formatTimeCode($endTime);
+        $playTime = ConfigWriter::formatTimeCode($startTime)
+            . '-'
+            . ConfigWriter::formatTimeCode($endTime);
 
         $playlistScheduleDays = $playlistSchedule->days;
         if (!empty($playlistScheduleDays) && count($playlistScheduleDays) < 7) {
