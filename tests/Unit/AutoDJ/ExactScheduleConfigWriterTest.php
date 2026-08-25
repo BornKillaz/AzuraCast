@@ -121,6 +121,16 @@ final class ExactScheduleConfigWriterTest extends Unit
         self::assertTrue($playlist->isPlayable(true));
     }
 
+    public function testLoopOnceFallsBackToInterruptingAutoDj(): void
+    {
+        $harness = $this->getHarness();
+        $playlist = $harness->entities->playlistForRef('exact');
+        $playlist->schedule_items->first()->loop_once = true;
+
+        self::assertFalse($playlist->backendExactStartUsesLiquidsoap());
+        self::assertTrue($playlist->isPlayable(true));
+    }
+
     public function testSingleTrackIsPreservedByExactScheduleSwitch(): void
     {
         $harness = $this->getHarness();
