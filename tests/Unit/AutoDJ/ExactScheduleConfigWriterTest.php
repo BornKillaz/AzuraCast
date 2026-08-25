@@ -63,16 +63,20 @@ final class ExactScheduleConfigWriterTest extends Unit
         self::assertStringContainsString('playlist_exact_scheduled_program', $config);
     }
 
-    public function testSubscriberRunsAfterPlaylistWriterAndBeforeCrossfade(): void
+    public function testSubscriberRunsAfterPlaylistWriterAndBeforeCrossfadeAndLive(): void
     {
-        self::assertSame(
-            [
-                WriteLiquidsoapConfiguration::class => [
-                    ['writeExactScheduleConfiguration', 29],
-                ],
-            ],
-            ExactScheduleConfigWriter::getSubscribedEvents()
-        );
+        $exactListeners = ExactScheduleConfigWriter::getSubscribedEvents()[WriteLiquidsoapConfiguration::class];
+        $exactPriority = $exactListeners[0][1];
+
+        $corePriorities = [];
+        foreach (ConfigWriter::getSubscribedEvents()[WriteLiquidsoapConfiguration::class] as $listener) {
+            $corePriorities[$listener[0]] = $listener[1];
+        }
+
+        self::assertSame('writeExactScheduleConfiguration', $exactListeners[0][0]);
+        self::assertLessThan($corePriorities['writePlaylistConfiguration'], $exactPriority);
+        self::assertGreaterThan($corePriorities['writeCrossfadeConfiguration'], $exactPriority);
+        self::assertGreaterThan($corePriorities['writeHarborConfiguration'], $exactPriority);
     }
 
     public function testLiquidsoapExactStartDoesNotAlsoUseLegacyScheduleSwitch(): void
@@ -125,7 +129,11 @@ final class ExactScheduleConfigWriterTest extends Unit
     {
         $harness = $this->getHarness();
         $playlist = $harness->entities->playlistForRef('exact');
-        $playlist->schedule_items->first()->loop_once = true;
+
+        foreach ($playlist->schedule_items as $scheduleItem) {
+            $scheduleItem->loop_once = true;
+            break;
+        }
 
         self::assertFalse($playlist->backendExactStartUsesLiquidsoap());
         self::assertTrue($playlist->isPlayable(true));
