@@ -242,7 +242,10 @@ final class StationPlaylist implements
         }
 
         foreach ($this->schedule_items as $scheduleItem) {
-            if ($scheduleItem->start_time === $scheduleItem->end_time) {
+            if (
+                $scheduleItem->start_time === $scheduleItem->end_time
+                || $scheduleItem->loop_once
+            ) {
                 return false;
             }
         }
