@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace Unit\AutoDJ;
 
+use App\Entity\Enums\PlaylistSources;
 use App\Event\Radio\WriteLiquidsoapConfiguration;
+use App\Radio\Backend\Liquidsoap\ConfigWriter;
 use App\Radio\Backend\Liquidsoap\ExactScheduleConfigWriter;
 use App\Service\PlaylistConfiguration\Schema\PlaylistConfigurationSchema;
 use App\Tests\AutoDJ\DumpLoader;
+use App\Tests\AutoDJ\InMemoryAutoDjHarness;
 use App\Tests\AutoDJ\InMemoryAutoDjHarnessFactory;
 use App\Tests\AutoDJ\Scenario\Enums\ScenarioMode;
 use App\Tests\AutoDJ\Scenario\ScenarioCase;
 use Codeception\Attribute\DataProvider;
 use Codeception\Test\Unit;
+use ReflectionClass;
 
 /**
  * @phpstan-import-type PlaylistConfigurationDump from PlaylistConfigurationSchema
@@ -67,6 +71,52 @@ final class ExactScheduleConfigWriterTest extends Unit
                 ],
             ],
             ExactScheduleConfigWriter::getSubscribedEvents()
+        );
+    }
+
+    public function testLiquidsoapExactStartDoesNotAlsoUseLegacyScheduleSwitch(): void
+    {
+        $harness = $this->getHarness();
+        $event = new WriteLiquidsoapConfiguration(
+            $harness->entities->station,
+            forEditing: true,
+            writeToDisk: false
+        );
+
+        /** @var ConfigWriter $coreWriter */
+        $coreWriter = (new ReflectionClass(ConfigWriter::class))->newInstanceWithoutConstructor();
+        $coreWriter->writePlaylistConfiguration($event);
+        (new ExactScheduleConfigWriter())->writeExactScheduleConfiguration($event);
+
+        $config = $event->buildConfiguration();
+
+        self::assertStringNotContainsString('# Interrupting Schedule Switches', $config);
+
+        $interruptingQueuePosition = strpos($config, 'id="interrupting_fallback"');
+        $exactSwitchPosition = strpos($config, 'id="exact_schedule_switch"');
+
+        self::assertNotFalse($interruptingQueuePosition);
+        self::assertNotFalse($exactSwitchPosition);
+        self::assertGreaterThan($interruptingQueuePosition, $exactSwitchPosition);
+    }
+
+    public function testUnsupportedSourceFallsBackToInterruptingAutoDj(): void
+    {
+        $harness = $this->getHarness();
+        $playlist = $harness->entities->playlistForRef('exact');
+        $playlist->source = PlaylistSources::Requests;
+
+        self::assertFalse($playlist->backendExactStartUsesLiquidsoap());
+        self::assertTrue($playlist->isPlayable(true));
+    }
+
+    private function getHarness(): InMemoryAutoDjHarness
+    {
+        $row = array_values(self::caseProvider())[0];
+
+        return (new InMemoryAutoDjHarnessFactory())->create(
+            $row['dump'],
+            $row['case']->runtime
         );
     }
 }
