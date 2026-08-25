@@ -40,6 +40,7 @@ final class StationPlaylist implements
     public const int DEFAULT_REMOTE_BUFFER = 20;
 
     public const string OPTION_INTERRUPT_OTHER_SONGS = 'interrupt';
+    public const string OPTION_EXACT_START = 'exact_start';
     public const string OPTION_PLAY_SINGLE_TRACK = 'single_track';
     public const string OPTION_MERGE = 'merge';
 
@@ -196,7 +197,7 @@ final class StationPlaylist implements
 
     #[OA\Property(
         items: new OA\Items(type: 'string'),
-        example: "interrupt,loop_once,single_track,merge"
+        example: "interrupt,exact_start,loop_once,single_track,merge"
     )]
     public array $backend_options {
         get => explode(',', $this->backend_options_raw ?? '');
@@ -207,7 +208,13 @@ final class StationPlaylist implements
 
     public function backendInterruptOtherSongs(): bool
     {
-        return in_array(self::OPTION_INTERRUPT_OTHER_SONGS, $this->backend_options, true);
+        return $this->backendExactStart()
+            || in_array(self::OPTION_INTERRUPT_OTHER_SONGS, $this->backend_options, true);
+    }
+
+    public function backendExactStart(): bool
+    {
+        return in_array(self::OPTION_EXACT_START, $this->backend_options, true);
     }
 
     public function backendMerge(): bool
@@ -286,7 +293,8 @@ final class StationPlaylist implements
     /** @var Collection<int, StationPlaylistGroup> */
     #[
         ORM\OneToMany(targetEntity: StationPlaylistGroup::class, mappedBy: 'playlist', fetch: 'EXTRA_LAZY'),
-        ORM\OrderBy(['weight' => 'ASC'])
+        ORM\OrderBy(['weight' => 'ASC']),
+        DeepNormalize(true)
     ]
     public private(set) Collection $playlist_groups;
 
@@ -323,6 +331,11 @@ final class StationPlaylist implements
     public function isPlayable(bool $interrupting = false): bool
     {
         if (!$this->is_enabled) {
+            return false;
+        }
+
+        // Exact wall-clock playlists are owned directly by Liquidsoap and must never be pre-queued by AutoDJ.
+        if ($this->backendExactStart()) {
             return false;
         }
 
