@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Unit\AutoDJ;
 
 use App\Entity\Enums\PlaylistSources;
+use App\Entity\Enums\PlaylistTypes;
 use App\Event\Radio\WriteLiquidsoapConfiguration;
 use App\Radio\Backend\Liquidsoap\ConfigWriter;
 use App\Radio\Backend\Liquidsoap\ExactScheduleConfigWriter;
@@ -108,6 +109,36 @@ final class ExactScheduleConfigWriterTest extends Unit
 
         self::assertFalse($playlist->backendExactStartUsesLiquidsoap());
         self::assertTrue($playlist->isPlayable(true));
+    }
+
+    public function testNonBlockPlaylistTypeFallsBackToInterruptingAutoDj(): void
+    {
+        $harness = $this->getHarness();
+        $playlist = $harness->entities->playlistForRef('exact');
+        $playlist->type = PlaylistTypes::OncePerHour;
+
+        self::assertFalse($playlist->backendExactStartUsesLiquidsoap());
+        self::assertTrue($playlist->isPlayable(true));
+    }
+
+    public function testSingleTrackIsPreservedByExactScheduleSwitch(): void
+    {
+        $harness = $this->getHarness();
+        $playlist = $harness->entities->playlistForRef('exact');
+        $playlist->backend_options = ['exact_start', 'single_track'];
+
+        $event = new WriteLiquidsoapConfiguration(
+            $harness->entities->station,
+            forEditing: false,
+            writeToDisk: false
+        );
+
+        (new ExactScheduleConfigWriter())->writeExactScheduleConfiguration($event);
+
+        self::assertStringContainsString(
+            '(predicate.at_most(1, {12h0m-15h0m}), playlist_exact_scheduled_program)',
+            $event->buildConfiguration()
+        );
     }
 
     private function getHarness(): InMemoryAutoDjHarness
