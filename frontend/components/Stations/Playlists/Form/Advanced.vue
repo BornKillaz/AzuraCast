@@ -39,7 +39,7 @@ const backendOptions = [
     },
     {
         value: "exact_start",
-        text: $gettext("Force exact playback window for scheduled time blocks (interrupt AutoDJ, but not live DJs)."),
+        text: $gettext("Force Standard scheduled time blocks to start and end at their wall-clock times (interrupt AutoDJ, but not live DJs)."),
     },
     {
         value: "single_track",
