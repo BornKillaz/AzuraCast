@@ -209,7 +209,8 @@ final class StationPlaylist implements
     public function backendInterruptOtherSongs(): bool
     {
         $exactStartFallsBackToInterrupt = $this->backendExactStart()
-            && $this->schedule_items->count() > 0;
+            && $this->schedule_items->count() > 0
+            && !$this->backendExactStartUsesLiquidsoap();
 
         return $exactStartFallsBackToInterrupt
             || in_array(self::OPTION_INTERRUPT_OTHER_SONGS, $this->backend_options, true);
@@ -223,6 +224,13 @@ final class StationPlaylist implements
     public function backendExactStartUsesLiquidsoap(): bool
     {
         if (!$this->backendExactStart() || 0 === $this->schedule_items->count()) {
+            return false;
+        }
+
+        if (
+            PlaylistSources::Playlists === $this->source
+            || PlaylistSources::Requests === $this->source
+        ) {
             return false;
         }
 
