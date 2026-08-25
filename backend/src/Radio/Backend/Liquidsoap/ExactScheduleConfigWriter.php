@@ -61,7 +61,10 @@ final class ExactScheduleConfigWriter implements EventSubscriberInterface
 
             foreach ($playlist->schedule_items as $scheduleItem) {
                 $playTime = $this->getScheduledPlaylistPlayTime($event, $scheduleItem);
-                $exactScheduleSwitches[] = '({ ' . $playTime . ' }, ' . $playlistVarName . ')';
+
+                $exactScheduleSwitches[] = $playlist->backendPlaySingleTrack()
+                    ? '(predicate.at_most(1, {' . $playTime . '}), ' . $playlistVarName . ')'
+                    : '({ ' . $playTime . ' }, ' . $playlistVarName . ')';
             }
         }
 
