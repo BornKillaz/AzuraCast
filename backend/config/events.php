@@ -52,7 +52,7 @@ return static function (CallableEventDispatcherInterface $dispatcher) {
 
             // Add an error handler for most in-controller/task situations.
             $errorMiddleware = $app->addErrorMiddleware(
-                $environment->showDetailedErrors,
+                $environment->showDetailedErrors(),
                 true,
                 true,
                 $container->get(Psr\Log\LoggerInterface::class)
@@ -105,6 +105,10 @@ return static function (CallableEventDispatcherInterface $dispatcher) {
     $dispatcher->addCallableListener(
         Event\GetNotifications::class,
         App\Notification\Check\SyncTaskCheck::class
+    );
+    $dispatcher->addCallableListener(
+        Event\GetNotifications::class,
+        App\Notification\Check\ProfilerAdvisorCheck::class
     );
     $dispatcher->addCallableListener(
         Event\GetNotifications::class,
