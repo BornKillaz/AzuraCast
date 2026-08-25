@@ -208,13 +208,31 @@ final class StationPlaylist implements
 
     public function backendInterruptOtherSongs(): bool
     {
-        return $this->backendExactStart()
+        $exactStartFallsBackToInterrupt = $this->backendExactStart()
+            && $this->schedule_items->count() > 0;
+
+        return $exactStartFallsBackToInterrupt
             || in_array(self::OPTION_INTERRUPT_OTHER_SONGS, $this->backend_options, true);
     }
 
     public function backendExactStart(): bool
     {
         return in_array(self::OPTION_EXACT_START, $this->backend_options, true);
+    }
+
+    public function backendExactStartUsesLiquidsoap(): bool
+    {
+        if (!$this->backendExactStart() || 0 === $this->schedule_items->count()) {
+            return false;
+        }
+
+        foreach ($this->schedule_items as $scheduleItem) {
+            if ($scheduleItem->start_time === $scheduleItem->end_time) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function backendMerge(): bool
@@ -333,8 +351,8 @@ final class StationPlaylist implements
             return false;
         }
 
-        // Exact wall-clock playlists are owned directly by Liquidsoap and must never be pre-queued by AutoDJ.
-        if ($this->backendExactStart()) {
+        // Bounded exact schedules are owned directly by Liquidsoap and must never be pre-queued by AutoDJ.
+        if ($this->backendExactStartUsesLiquidsoap()) {
             return false;
         }
 
