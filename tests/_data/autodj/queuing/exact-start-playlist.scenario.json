@@ -1,0 +1,26 @@
+{
+  "description": "A playlist with the 'exact_start' backend option is owned by Liquidsoap wall-clock scheduling and must be excluded from both normal and interrupting AutoDJ queue builds.",
+  "modes": [
+    "in_memory",
+    "integration"
+  ],
+  "cases": [
+    {
+      "name": "exact-start-bypasses-autodj-queues",
+      "now": "2018-01-15T12:30:00+00:00",
+      "expect_sequence": [
+        {
+          "mode": "exact",
+          "interrupting": false,
+          "playlist_ref": "regular",
+          "media_ref": "mNorm",
+          "playlist_chain_refs": []
+        },
+        {
+          "mode": "none",
+          "interrupting": true
+        }
+      ]
+    }
+  ]
+}

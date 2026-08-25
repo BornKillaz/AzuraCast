@@ -40,6 +40,7 @@ final class StationPlaylist implements
     public const int DEFAULT_REMOTE_BUFFER = 20;
 
     public const string OPTION_INTERRUPT_OTHER_SONGS = 'interrupt';
+    public const string OPTION_EXACT_START = 'exact_start';
     public const string OPTION_PLAY_SINGLE_TRACK = 'single_track';
     public const string OPTION_MERGE = 'merge';
 
@@ -196,7 +197,7 @@ final class StationPlaylist implements
 
     #[OA\Property(
         items: new OA\Items(type: 'string'),
-        example: "interrupt,loop_once,single_track,merge"
+        example: "interrupt,exact_start,loop_once,single_track,merge"
     )]
     public array $backend_options {
         get => explode(',', $this->backend_options_raw ?? '');
@@ -207,7 +208,49 @@ final class StationPlaylist implements
 
     public function backendInterruptOtherSongs(): bool
     {
-        return in_array(self::OPTION_INTERRUPT_OTHER_SONGS, $this->backend_options, true);
+        if ($this->backendExactStartUsesLiquidsoap()) {
+            return false;
+        }
+
+        $exactStartFallsBackToInterrupt = $this->backendExactStart()
+            && $this->schedule_items->count() > 0;
+
+        return $exactStartFallsBackToInterrupt
+            || in_array(self::OPTION_INTERRUPT_OTHER_SONGS, $this->backend_options, true);
+    }
+
+    public function backendExactStart(): bool
+    {
+        return in_array(self::OPTION_EXACT_START, $this->backend_options, true);
+    }
+
+    public function backendExactStartUsesLiquidsoap(): bool
+    {
+        if (
+            !$this->backendExactStart()
+            || PlaylistTypes::Standard !== $this->type
+            || 0 === $this->schedule_items->count()
+        ) {
+            return false;
+        }
+
+        if (
+            PlaylistSources::Playlists === $this->source
+            || PlaylistSources::Requests === $this->source
+        ) {
+            return false;
+        }
+
+        foreach ($this->schedule_items as $scheduleItem) {
+            if (
+                $scheduleItem->start_time === $scheduleItem->end_time
+                || $scheduleItem->loop_once
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function backendMerge(): bool
@@ -323,6 +366,11 @@ final class StationPlaylist implements
     public function isPlayable(bool $interrupting = false): bool
     {
         if (!$this->is_enabled) {
+            return false;
+        }
+
+        // Bounded exact schedules are owned directly by Liquidsoap and must never be pre-queued by AutoDJ.
+        if ($this->backendExactStartUsesLiquidsoap()) {
             return false;
         }
 
